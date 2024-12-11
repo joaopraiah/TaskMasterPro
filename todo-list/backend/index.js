@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const app = express();
 const PORT = 3001;
 
@@ -7,12 +8,23 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json()); // Para lidar com JSON no corpo das requisições
 
-// Dados em memória (pode ser substituído por um banco de dados)
-let tasks = [
-  { id: 1, text: 'Learn React', status: 'to-do' },
-  { id: 2, text: 'Setup Backend', status: 'in-progress' },
-  { id: 3, text: 'Deploy App', status: 'done' },
-];
+// Função para ler o arquivo de tarefas
+const getTasksFromFile = () => {
+  try {
+    const data = fs.readFileSync('tasks.json');
+    return JSON.parse(data);
+  } catch (error) {
+    return []; // Retorna um array vazio caso o arquivo não exista ou tenha erro
+  }
+};
+
+// Função para salvar as tarefas no arquivo
+const saveTasksToFile = (tasks) => {
+  fs.writeFileSync('tasks.json', JSON.stringify(tasks, null, 2));
+};
+
+// Dados em memória (agora lidos do arquivo JSON)
+let tasks = getTasksFromFile();
 
 // Rotas
 // Obter todas as tarefas
@@ -25,6 +37,7 @@ app.post('/tasks', (req, res) => {
   const { text, status } = req.body;
   const newTask = { id: tasks.length + 1, text, status: status || 'to-do' };
   tasks.push(newTask);
+  saveTasksToFile(tasks); // Salvar no arquivo
   res.status(201).json(newTask);
 });
 
@@ -36,6 +49,7 @@ app.put('/tasks/:id', (req, res) => {
   if (task) {
     task.text = text || task.text;
     task.status = status || task.status;
+    saveTasksToFile(tasks); // Salvar no arquivo
     res.json(task);
   } else {
     res.status(404).json({ error: 'Task not found' });
@@ -46,6 +60,7 @@ app.put('/tasks/:id', (req, res) => {
 app.delete('/tasks/:id', (req, res) => {
   const { id } = req.params;
   tasks = tasks.filter((task) => task.id !== parseInt(id));
+  saveTasksToFile(tasks); // Salvar no arquivo
   res.status(204).end();
 });
 
